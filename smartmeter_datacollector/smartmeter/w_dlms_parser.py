@@ -19,54 +19,54 @@ from .meter_data import MeterDataPoint
 LOGGER = logging.getLogger("smartmeter")
 
 
-class HdlcDlmsParser:
-    HDLC_BUFFER_MAX_SIZE = 5000
+class WDlmsParser:
+    W_BUFFER_MAX_SIZE = 5000
 
     def __init__(self, cosem_config: Cosem, block_cipher_key: str = None) -> None:
         if block_cipher_key:
             self._client = GXDLMSSecureClient(
                 useLogicalNameReferencing=True,
-                interfaceType=InterfaceType.HDLC)
+                interfaceType=InterfaceType.WRAPPER)
             self._client.ciphering.security = Security.ENCRYPTION
             self._client.ciphering.blockCipherKey = GXByteBuffer.hexToBytes(block_cipher_key)
         else:
             self._client = GXDLMSClient(
                 useLogicalNameReferencing=True,
-                interfaceType=InterfaceType.HDLC)
+                interfaceType=InterfaceType.WRAPPER)
 
-        self._hdlc_buffer = GXByteBuffer()
+        self._w_buffer = GXByteBuffer()
         self._dlms_data = GXReplyData()
         self._cosem = cosem_config
 
-    def append_to_hdlc_buffer(self, data: bytes) -> None:
-        if self._hdlc_buffer.getSize() > self.HDLC_BUFFER_MAX_SIZE:
-            LOGGER.warning("HDLC byte-buffer > %i. Buffer is cleared, some data is lost.",
-                           self.HDLC_BUFFER_MAX_SIZE)
-            self._hdlc_buffer.clear()
+    def append_to_w_buffer(self, data: bytes) -> None:
+        if self._w_buffer.getSize() > self.W_BUFFER_MAX_SIZE:
+            LOGGER.warning("WRAPPER byte-buffer > %i. Buffer is cleared, some data is lost.",
+                           self.W_BUFFER_MAX_SIZE)
+            self._w_buffer.clear()
             self._dlms_data.clear()
-        self._hdlc_buffer.set(data)
+        self._w_buffer.set(data)
 
-    def clear_hdlc_buffer(self) -> None:
-        self._hdlc_buffer.clear()
+    def clear_w_buffer(self) -> None:
+        self._w_buffer.clear()
 
-    def extract_data_from_hdlc_frames(self) -> bool:
+    def extract_data_from_w_frames(self) -> bool:
         """
-        Try to extract data fragments from HDLC frame-buffer and store it into DLMS buffer.
-        HDLC buffer is being cleared.
+        Try to extract data fragments from WRAPPER frame-buffer and store it into DLMS buffer.
+        WRAPPER buffer is being cleared.
         Returns: True if data is complete for parsing.
         """
         tmp = GXReplyData()
         try:
-            LOGGER.debug("HDLC Buffer: %s", GXByteBuffer.hex(self._hdlc_buffer))
-            self._client.getData(self._hdlc_buffer, tmp, self._dlms_data)
+            LOGGER.debug("WRAPPER Buffer: %s", GXByteBuffer.hex(self._w_buffer))
+            self._client.getData(self._w_buffer, tmp, self._dlms_data)
         except (ValueError, TypeError) as ex:
-            LOGGER.warning("Failed to extract data from HDLC frame: '%s' Some data got lost.", ex)
-            self._hdlc_buffer.clear()
+            LOGGER.warning("Failed to extract data from WRAPPER frame: '%s' Some data got lost.", ex)
+            self._w_buffer.clear()
             self._dlms_data.clear()
             return False
 
         if not self._dlms_data.isComplete():
-            LOGGER.debug("HDLC frame incomplete and will not be parsed yet.")
+            LOGGER.debug("WRAPPER frame incomplete and will not be parsed yet.")
             return False
 
         if self._dlms_data.isMoreData():
@@ -74,7 +74,7 @@ class HdlcDlmsParser:
             return False
 
         LOGGER.debug("DLMS packet complete and ready for parsing.")
-        self._hdlc_buffer.clear()
+        self._w_buffer.clear()
         return True
 
     def parse_to_dlms_objects(self) -> Dict[str, GXDLMSObject]:
