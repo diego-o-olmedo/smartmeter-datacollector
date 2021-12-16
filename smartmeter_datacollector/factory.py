@@ -16,6 +16,7 @@ from .sinks.logger_sink import LoggerSink
 from .sinks.mqtt_sink import MqttConfig, MqttDataSink
 from .smartmeter.iskraam550 import IskraAM550
 from .smartmeter.lge450 import LGE450
+from .smartmeter.MTS445 import MTS445
 from .smartmeter.meter import Meter, MeterError
 
 
@@ -33,6 +34,11 @@ def build_meters(config: ConfigParser) -> List[Meter]:
             elif meter_type == "iskraam550":
                 meters.append(IskraAM550(
                     port=meter_config.get('port', "/dev/ttyUSB0"),
+                    decryption_key=meter_config.get('key')
+                ))
+            elif meter_type == "MTS445":
+                meters.append(MTS445(
+                    port=meter_config.get('port', ""),
                     decryption_key=meter_config.get('key')
                 ))
             else:

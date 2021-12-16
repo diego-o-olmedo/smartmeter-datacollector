@@ -10,14 +10,14 @@ import logging
 import serial
 
 from .cosem import Cosem, RegisterCosem
-from .meter import MeterError, SerialHdlcDlmsMeter
+from .meter import MeterError, SerialHdlcDlmsMeter, WDlmsMeter
 from .meter_data import MeterDataPointTypes
 from .reader import ReaderError
-from .serial_reader import SerialConfig
+from .GX_reader import SerialConfig
 
 LOGGER = logging.getLogger("smartmeter")
 
-LGE450_COSEM_REGISTERS = [
+MTS445_COSEM_REGISTERS = [
     RegisterCosem("1.0.1.7.0.255", MeterDataPointTypes.ACTIVE_POWER_P.value),
     RegisterCosem("1.0.2.7.0.255", MeterDataPointTypes.ACTIVE_POWER_N.value),
     RegisterCosem("1.0.3.7.0.255", MeterDataPointTypes.REACTIVE_POWER_P.value),
@@ -66,7 +66,7 @@ LGE450_COSEM_REGISTERS = [
 ]
 
 
-class LGE450(SerialHdlcDlmsMeter):
+class MTS445(WDlmsMeter):
     def __init__(self, port: str, decryption_key: str = None) -> None:
         serial_config = SerialConfig(
             port=port,
@@ -74,16 +74,16 @@ class LGE450(SerialHdlcDlmsMeter):
             data_bits=serial.EIGHTBITS,
             parity=serial.PARITY_EVEN,
             stop_bits=serial.STOPBITS_ONE,
-            termination=LGE450.HDLC_FLAG
+            termination=MTS445.HDLC_FLAG
         )
         cosem = Cosem(
             fallback_id=port,
-            register_obis=LGE450_COSEM_REGISTERS
+            register_obis=MTS445_COSEM_REGISTERS
         )
         try:
             super().__init__(serial_config, cosem, decryption_key)
         except ReaderError as ex:
-            LOGGER.fatal("Unable to setup serial reader for L+G E450. '%s'", ex)
-            raise MeterError("Failed setting up L+G E450.") from ex
+            LOGGER.fatal("Unable to setup serial reader for x485xxx. '%s'", ex)
+            raise MeterError("Failed setting up x485xxx.") from ex
 
-        LOGGER.info("Successfully set up L+G E450 smart meter on '%s'.", port)
+        LOGGER.info("Successfully set up x485xxx smart meter on '%s'.", port)
